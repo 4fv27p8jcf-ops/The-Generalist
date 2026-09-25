@@ -30,6 +30,15 @@ def _reassemble_db_if_needed():
 
 _reassemble_db_if_needed()
 
+import sqlite3
+try:
+    _conn = sqlite3.connect(DB_PATH)
+    _count = _conn.execute("SELECT COUNT(*) FROM brands").fetchone()[0]
+    print(f"[startup] brands.db loaded OK - {_count} brands found", flush=True)
+    _conn.close()
+except Exception as e:
+    print(f"[startup] ERROR loading brands.db: {e}", flush=True)
+
 from search_drugs import search_drugs
 from check_interactions import check_interactions
 
@@ -38,10 +47,14 @@ app = Flask(__name__)
 
 @app.after_request
 def add_cors_headers(response):
-    # Allow requests from the frontend's domain (any origin, for v1)
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    # Reflect the actual request origin (works whether or not the frontend
+    # uses credentials mode - a hardcoded "*" is rejected by browsers when
+    # credentials are involved, which can silently cause "Failed to fetch")
+    origin = request.headers.get("Origin", "*")
+    response.headers["Access-Control-Allow-Origin"] = origin
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
 
